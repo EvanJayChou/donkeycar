@@ -1,0 +1,11 @@
+.git
+.pytest_cache
+__pycache__
+*.pyc
+mycar
+*.keras
+*.onnx
+*.engine
+*.h5
+*.pth
+*.tflite

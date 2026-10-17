@@ -1,0 +1,33 @@
+# JetPack 6 / L4T r36.4.0 example. Change this tag to the exact L4T release
+# reported by `cat /etc/nv_tegra_release` on the host. Needs verification on device.
+FROM nvcr.io/nvidia/l4t-jetpack:r36.4.0
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    DONKEY_ALLOW_UNSUPPORTED_PYTHON=1 \
+    PYTHONDONTWRITEBYTECODE=1
+WORKDIR /root/donkeycar
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-pip python3-venv python3-dev build-essential git pkg-config \
+    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 \
+    i2c-tools v4l-utils libv4l-dev libjpeg-dev libpng-dev \
+    python3-opencv python3-pycuda && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY . /root/donkeycar
+# setup.cfg intentionally keeps the PC Python support range. The explicit
+# override is only for this Jetson image, whose system Python is commonly 3.10.
+RUN python3 -m pip install --no-cache-dir \
+      numpy\<2 pillow docopt-ng tornado requests PrettyTable paho-mqtt \
+      simple-pid progress pyfiglet psutil pynmea2 pyserial utm pandas pyyaml \
+      flask eventlet python-socketio smbus2 Jetson.GPIO && \
+    python3 -m pip install --no-cache-dir \
+      --no-deps --ignore-requires-python -e .
+
+# Fail during image construction if the vendor image does not expose the
+# expected runtime. TensorRT/CUDA availability remains a Jetson verification.
+RUN python3 -c "import donkeycar; import tensorrt; import pycuda.driver; print('TensorRT', tensorrt.__version__)" \
+    && command -v trtexec
+
+ENTRYPOINT ["/bin/bash"]
+CMD ["-lc", "cd /root/mycar 2>/dev/null || cd /root/donkeycar; exec bash"]
