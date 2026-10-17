@@ -459,6 +459,13 @@ DEFAULT_AI_FRAMEWORK = 'tensorflow'
 # 'resnet18': Pytorch heavy model
 DEFAULT_MODEL_TYPE = 'linear'
 
+# Jetson-only additive inference selection. The normal Keras/TFLite paths are
+# unchanged when this is left empty.
+DONKEY_INFERENCE_BACKEND = ""
+TENSORRT_ENGINE_PATH = ""
+TENSORRT_CROP = None  # optional (top, bottom, left, right), normally []
+TENSORRT_NORMALIZE = True
+
 # Number of training samples per pass.
 BATCH_SIZE = 128
 

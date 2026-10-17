@@ -305,17 +305,31 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     #
     # load and configure model for inference
     #
+    inference_backend = getattr(cfg, 'DONKEY_INFERENCE_BACKEND', '').lower()
+    if inference_backend == 'tensorrt' and not model_path:
+        model_path = getattr(cfg, 'TENSORRT_ENGINE_PATH', None)
+
     if model_path:
         # If we have a model, create an appropriate Keras part
-        kl = dk.utils.get_model_by_type(model_type, cfg)
+        if inference_backend == 'tensorrt':
+            from donkeycar.parts.tensorrt_pilot import TensorRTPilot
+            kl = TensorRTPilot(
+                model_path,
+                input_shape=(cfg.IMAGE_H, cfg.IMAGE_W, cfg.IMAGE_DEPTH),
+                crop=getattr(cfg, 'TENSORRT_CROP', None),
+                normalize=getattr(cfg, 'TENSORRT_NORMALIZE', True))
+        else:
+            kl = dk.utils.get_model_by_type(model_type, cfg)
 
         #
         # get callback function to reload the model
         # for the configured model format
         #
         model_reload_cb = None
-        if '.h5' in model_path or '.trt' in model_path or '.tflite' in \
-            model_path or '.savedmodel' in model_path or '.pth' in model_path:
+        if inference_backend == 'tensorrt' or '.h5' in model_path or \
+            '.trt' in model_path or '.tflite' in model_path or \
+            '.savedmodel' in model_path or '.pth' in model_path or \
+            '.engine' in model_path:
             # load the whole model with weigths, etc
             load_model(kl, model_path)
 
