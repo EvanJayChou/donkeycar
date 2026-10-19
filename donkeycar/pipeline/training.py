@@ -5,7 +5,7 @@ from typing import List, Dict, Union, Tuple
 import logging
 
 from donkeycar.config import Config
-from donkeycar.parts.keras import KerasPilot
+from donkeycar.parts.keras import KerasPilot, KerasLinear
 from donkeycar.parts.interpreter import keras_model_to_tflite, \
     saved_model_to_tensor_rt
 from donkeycar.pipeline.database import PilotDatabase
@@ -103,6 +103,30 @@ def get_model_train_details(database: PilotDatabase, model: str = None) \
     return model_name, model_num
 
 
+def export_onnx(cfg: Config, kl: KerasPilot, model_path: str,
+                onnx_path: str) -> None:
+    """Export the best saved model to ONNX for the Jetson TensorRT pilot.
+
+    Only image-only linear models are supported by TensorRTPilot; other
+    model types and missing export packages are skipped with a warning so
+    that training itself never fails because of the export.
+    """
+    if type(kl) is not KerasLinear:
+        logger.warning(f'CREATE_ONNX: skipping ONNX export, only the image-'
+                       f'only linear model is supported, not {kl}')
+        return
+    try:
+        from donkeycar.parts.onnx_export import keras_model_to_onnx
+        keras_model_to_onnx(model_path, onnx_path,
+                            (cfg.IMAGE_H, cfg.IMAGE_W, cfg.IMAGE_DEPTH),
+                            atol=getattr(cfg, 'ONNX_EXPORT_ATOL', 1e-3))
+    except ImportError as e:
+        logger.warning(f'CREATE_ONNX: skipping ONNX export, missing package '
+                       f'({e}). Install with: pip install -e .[onnx]')
+    except Exception as e:
+        logger.error(f'CREATE_ONNX: ONNX export of {model_path} failed: {e}')
+
+
 def train(cfg: Config, tub_paths: str, model: str = None,
           model_type: str = None, transfer: str = None, comment: str = None) \
         :
@@ -190,6 +214,9 @@ def train(cfg: Config, tub_paths: str, model: str = None,
         model_tmp = load_model(model_path, compile=False)
         model_tmp.export(f'{base_path}.savedmodel')
         saved_model_to_tensor_rt(f'{base_path}.savedmodel', f'{base_path}.trt')
+
+    if getattr(cfg, 'CREATE_ONNX', False):
+        export_onnx(cfg, kl, model_path, f'{base_path}.onnx')
 
     database_entry = {
         'Number': model_num,

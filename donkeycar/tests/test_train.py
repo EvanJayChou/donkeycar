@@ -250,3 +250,20 @@ def test_training_pipeline(config: Config, model_type: str,
     finally:
         dataset.close()
 
+
+
+@pytest.mark.parametrize('model_type, expect_onnx',
+                         [('linear', True), ('categorical', False)])
+def test_train_creates_onnx(config: Config, model_type: str,
+                            expect_onnx: bool) -> None:
+    """ CREATE_ONNX writes a .onnx beside the model, for linear models only """
+    pytest.importorskip('onnxruntime')
+    pytest.importorskip('tf2onnx')
+    cfg = copy(config)
+    cfg.MAX_EPOCHS = 1
+    cfg.CREATE_TF_LITE = False
+    cfg.CREATE_ONNX = True
+    model_path = os.path.join(cfg.MODELS_PATH, f'pilot_onnx_{model_type}.keras')
+    train(cfg, cfg.DATA_PATH, model_path, model_type)
+    onnx_path = model_path.replace('.keras', '.onnx')
+    assert os.path.exists(onnx_path) == expect_onnx

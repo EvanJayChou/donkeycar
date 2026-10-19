@@ -513,6 +513,9 @@ CACHE_POLICY = 'ARRAY'
 # Automatically create TFLite model for faster inference on Pi.
 CREATE_TF_LITE = True
 CREATE_TENSOR_RT = False
+# Export an ONNX model (models/pilot_N.onnx) for the Jetson TensorRT pilot.
+# Only image-only 'linear' models; needs `pip install -e .[onnx]`.
+CREATE_ONNX = True
 SAVE_MODEL_AS_H5 = False
 SEND_BEST_MODEL_TO_PI = False
 

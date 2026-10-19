@@ -1,6 +1,7 @@
-# JetPack 6 / L4T r36.4.0 example. Change this tag to the exact L4T release
-# reported by `cat /etc/nv_tegra_release` on the host. Needs verification on device.
-FROM nvcr.io/nvidia/l4t-jetpack:r36.4.0
+# JetPack 6 / L4T r36 base. ./jetson.sh build picks the tag matching the
+# host's /etc/nv_tegra_release; override with L4T_TAG=r36.x.0 if needed.
+ARG L4T_TAG=r36.4.0
+FROM nvcr.io/nvidia/l4t-jetpack:${L4T_TAG}
 
 # trtexec ships in /usr/src/tensorrt/bin, which is not on PATH by default.
 ENV DEBIAN_FRONTEND=noninteractive \

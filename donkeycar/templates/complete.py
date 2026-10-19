@@ -305,6 +305,9 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None,
     # load and configure model for inference
     #
     inference_backend = getattr(cfg, 'DONKEY_INFERENCE_BACKEND', '').lower()
+    if model_path and model_path.endswith('.engine'):
+        # a serialized TensorRT engine can only run on the tensorrt backend
+        inference_backend = 'tensorrt'
     if inference_backend == 'tensorrt' and not model_path:
         model_path = getattr(cfg, 'TENSORRT_ENGINE_PATH', None)
 

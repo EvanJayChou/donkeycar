@@ -99,6 +99,14 @@ dev = [
     "mypy",
     "black",
 ]
+# ONNX export for the Jetson TensorRT pilot; install alongside [pc].
+# tf2onnx is not numpy-2 compatible.
+onnx = [
+    "onnx",
+    "onnxruntime",
+    "tf2onnx",
+    "numpy<2",
+]
 torch = [
     "torch==2.11.*",
     "pytorch-lightning",
