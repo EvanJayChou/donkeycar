@@ -72,6 +72,11 @@ REALSENSE_D435_ID = None        # Serial number of camera or None for auto-detec
 OAKD_RGB = True       # True to capture RGB image
 OAKD_DEPTH = True     # True to capture depth as image array
 OAKD_ID = None        # Serial number of camera or None for auto-detect
+OAKD_RGB_OUTPUT_MODE = "isp"   # "isp" preserves full FOV; "video" uses crop-based framing
+OAKD_RGB_ISP_SCALE_NUM = 1      # Used when OAKD_RGB_OUTPUT_MODE == "isp"
+OAKD_RGB_ISP_SCALE_DEN = 6      # Used when OAKD_RGB_OUTPUT_MODE == "isp"
+OAKD_RGB_SENSOR_CROP_X = None   # Used when OAKD_RGB_OUTPUT_MODE == "video"
+OAKD_RGB_SENSOR_CROP_Y = None   # Used when OAKD_RGB_OUTPUT_MODE == "video"
 
 
 # ------------------------------------------------------------------------------
@@ -410,9 +415,13 @@ TFMINI_SERIAL_PORT = "/dev/serial0"
 
 # IMU: Inertial Measurement Unit (e.g. MPU6050).
 HAVE_IMU = False
-IMU_SENSOR = 'mpu6050'      # (mpu6050|mpu9250)
+IMU_SENSOR = 'mpu6050'      # (mpu6050|mpu9250|bno08x)
 IMU_ADDRESS = 0x68          # I2C address
 IMU_DLP_CONFIG = 0          # Digital Lowpass Filter (0-6)
+
+# GPS + IMU Fusion: Use the BNO08x IMU to update position faster
+USE_FUSION = False          # Activate GPS + IMU Fusion
+FUSION_DEBUG = False        # Logs the position and yaw from the kalman filter
 
 # SOMBRERO HAT: Enable if using the Sombrero Hat.
 HAVE_SOMBRERO = False
@@ -460,10 +469,13 @@ DEFAULT_AI_FRAMEWORK = 'tensorflow'
 DEFAULT_MODEL_TYPE = 'linear'
 
 # Jetson-only additive inference selection. The normal Keras/TFLite paths are
-# unchanged when this is left empty.
+# unchanged when this is left empty. 'tensorrt' runs a serialized TensorRT
+# .engine built from an ONNX export (see docs/JETSON_DOCKER.md); it is separate
+# from the TF-TRT 'tensorrt_linear' model type above. Only image-only 'linear'
+# models are supported. Use TRANSFORMATIONS (e.g. 'CROP') for cropping; they
+# run before the pilot exactly as in training.
 DONKEY_INFERENCE_BACKEND = ""
 TENSORRT_ENGINE_PATH = ""
-TENSORRT_CROP = None  # optional (top, bottom, left, right), normally []
 TENSORRT_NORMALIZE = True
 
 # Number of training samples per pass.

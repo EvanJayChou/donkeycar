@@ -14,10 +14,10 @@ def test_preprocess_matches_training_normalization():
     np.testing.assert_array_equal(actual, expected)
 
 
-def test_preprocess_crop_matches_training_shape():
+def test_preprocess_rejects_wrong_shape():
     image = np.zeros((165, 160, 3), dtype=np.uint8)
-    result = TensorRTPilot.preprocess(image, crop=(45, 0, 0, 0))
-    assert result.shape == (120, 160, 3)
+    with pytest.raises(ValueError, match="does not match"):
+        TensorRTPilot.preprocess(image)
 
 
 def test_module_imports_without_tensor_rt(monkeypatch):

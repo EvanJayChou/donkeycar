@@ -30,7 +30,15 @@ pipeline; start with `CAMERA_TYPE = 'V4L'` and a USB camera first.
 
 ## PC export and Jetson engine build
 
+The export runs in the PC training environment (Python 3.12+, TF 2.19 /
+Keras 3). It uses Keras' native ONNX export and falls back to tf2onnx
+(`--tf2onnx` forces it). It needs `onnx`, `onnxruntime` and `tf2onnx`
+installed, and `numpy<2`, because tf2onnx is not numpy-2 compatible. The
+export uses a fixed batch size of 1 and prints the output order. The pilot
+reads output 0 as angle and output 1 as throttle.
+
 ```bash
+pip install onnx onnxruntime tf2onnx "numpy<2"
 python scripts/export_onnx.py model.keras model.onnx --image test.jpg
 # in the Jetson container, after copying model.onnx:
 bash scripts/build_trt_engine.sh model.onnx model.engine
@@ -48,6 +56,13 @@ when using the complete template:
 DONKEY_INFERENCE_BACKEND = "tensorrt"
 TENSORRT_ENGINE_PATH = "/root/mycar/models/model.engine"
 ```
+
+This backend supports only image-only `linear` models. Behavior, lidar,
+odometry, IMU, and localizer setups raise an error at startup. Cropping and
+masking come from the normal `TRANSFORMATIONS` config, which runs before
+the pilot just as in training. This backend is separate from upstream's
+`tensorrt_linear` model type, which uses TF-TRT and needs TensorFlow on the
+car.
 
 The pilot can also fall back to a sibling `.onnx` file only when ONNX Runtime
 has a TensorRT or CUDA execution provider; a serialized `.engine` is otherwise

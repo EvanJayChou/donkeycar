@@ -18,10 +18,9 @@ class TensorRTPilot:
     """Run a linear Donkeycar model from a serialized TensorRT engine."""
 
     def __init__(self, engine_path, input_shape=(120, 160, 3),
-                 crop=None, normalize=True, warmup_frames=20):
+                 normalize=True, warmup_frames=20):
         self.engine_path = str(Path(engine_path).expanduser())
         self.input_shape = tuple(input_shape)
-        self.crop = crop
         self.normalize = normalize
         self.warmup_frames = int(warmup_frames)
         self._latencies = []
@@ -30,15 +29,13 @@ class TensorRTPilot:
         self._load()
 
     @staticmethod
-    def preprocess(img_array, input_shape=(120, 160, 3), crop=None,
-                   normalize=True):
-        """Match the linear Keras training path: crop, shape, normalize."""
+    def preprocess(img_array, input_shape=(120, 160, 3), normalize=True):
+        """Match the linear Keras training path: shape check, normalize.
+
+        Cropping/masking is done upstream by the TRANSFORMATIONS part, which
+        keeps the image shape, exactly as during training.
+        """
         image = np.asarray(img_array)
-        if crop is not None:
-            top, bottom, left, right = crop
-            end = image.shape[0] - bottom if bottom else image.shape[0]
-            end_x = image.shape[1] - right if right else image.shape[1]
-            image = image[top:end, left:end_x]
         if tuple(image.shape) != tuple(input_shape):
             raise ValueError(
                 f"Input image shape {image.shape} does not match {input_shape}; "
@@ -134,19 +131,28 @@ class TensorRTPilot:
         self._tensor_outputs = []
         self._tensor_input = None
         self._stream = cuda.Stream()
+        is_input = {name: self._engine.get_tensor_mode(name) ==
+                    trt.TensorIOMode.INPUT for name in self._tensor_names}
+        # Resolve dynamic input dims first so the context can infer the
+        # concrete output shapes before buffers are allocated.
         for name in self._tensor_names:
             shape = tuple(self._engine.get_tensor_shape(name))
+            if is_input[name] and any(dim < 0 for dim in shape):
+                self._context.set_input_shape(name, (1, *self.input_shape))
+        for name in self._tensor_names:
+            shape = tuple(self._context.get_tensor_shape(name))
             if any(dim < 0 for dim in shape):
-                shape = (1, *self.input_shape)
-                self._context.set_input_shape(name, shape)
+                raise RuntimeError(
+                    f"TensorRT tensor {name} has unresolved shape {shape}")
             dtype = trt.nptype(self._engine.get_tensor_dtype(name))
             size = int(np.prod(shape))
             device = cuda.mem_alloc(size * np.dtype(dtype).itemsize)
             self._context.set_tensor_address(name, int(device))
-            if self._engine.get_tensor_mode(name) == trt.TensorIOMode.INPUT:
+            if is_input[name]:
                 self._tensor_input = (name, device, shape, dtype)
             else:
-                self._tensor_outputs.append((device, shape, dtype))
+                host = cuda.pagelocked_empty(size, dtype)
+                self._tensor_outputs.append((device, host, shape))
         if self._tensor_input is None or len(self._tensor_outputs) < 2:
             raise RuntimeError("Expected one input and two TensorRT outputs")
 
@@ -155,13 +161,11 @@ class TensorRTPilot:
             name, input_device, _, _ = self._tensor_input
             self._cuda.memcpy_htod_async(input_device, image, self._stream)
             self._context.execute_async_v3(self._stream.handle)
-            outputs = []
-            for device, shape, dtype in self._tensor_outputs:
-                host = self._cuda.pagelocked_empty(int(np.prod(shape)), dtype)
+            for device, host, _ in self._tensor_outputs:
                 self._cuda.memcpy_dtoh_async(host, device, self._stream)
-                outputs.append((host, shape))
             self._stream.synchronize()
-            return [np.array(host).reshape(shape).copy() for host, shape in outputs]
+            return [np.array(host).reshape(shape).copy()
+                    for _, host, shape in self._tensor_outputs]
         self._cuda.memcpy_htod_async(self._input_device, image, self._stream)
         self._context.execute_async_v2(self._bindings, self._stream.handle)
         for (host, shape), device in zip(self._host_outputs, self._device_outputs):
@@ -171,8 +175,7 @@ class TensorRTPilot:
                 for host, _ in self._host_outputs]
 
     def run(self, img_array):
-        image = self.preprocess(img_array, self.input_shape, self.crop,
-                                self.normalize)
+        image = self.preprocess(img_array, self.input_shape, self.normalize)
         start = time.perf_counter()
         if self._backend == "tensorrt":
             outputs = self._infer_trt(image)
