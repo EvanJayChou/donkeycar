@@ -1,7 +1,7 @@
 # Donkeycar: a python self driving library
 
 
-![Build Status](https://github.com/autorope/donkeycar/actions/workflows/python-package-conda.yml/badge.svg?branch=main)
+![Build Status](https://github.com/autorope/donkeycar/actions/workflows/python-package.yml/badge.svg?branch=main)
 ![Lint Status](https://github.com/autorope/donkeycar/actions/workflows/superlinter.yml/badge.svg?branch=main)
 ![Release](https://img.shields.io/github/v/release/autorope/donkeycar)
 
@@ -18,6 +18,7 @@
 Donkeycar is a minimalist and modular self driving library for Python. It is developed for hobbyists and students with a focus on allowing fast experimentation and easy community contributions.  It is being actively used at the high school and university level for learning and research.  It offers a [rich graphical interface](https://docs.donkeycar.com/utility/ui/) and includes a [simulator](https://docs.donkeycar.com/guide/deep_learning/simulator/) so you can experiment with self-driving even before you build a robot.
 
 #### Quick Links
+* **Jetson Orin Nano (Docker + TensorRT): [docs/JETSON_DOCKER.md](docs/JETSON_DOCKER.md)**
 * [Donkeycar Updates & Examples](http://donkeycar.com)
 * [Build instructions and Software documentation](http://docs.donkeycar.com)
 * [Discord / Chat](https://discord.gg/PN6kFeA)
@@ -78,6 +79,85 @@ V.add(tub, inputs=['image'], outputs=['num_records'])
 #start the drive loop at 10 Hz
 V.start(rate_hz=10)
 ```
+
+## Installation
+
+Donkeycar uses [uv](https://docs.astral.sh/uv/) for environment management.
+Install uv first:
+
+```zsh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then create a persistent virtual environment and activate it on login by
+adding the `source` line to your shell profile.
+
+### Raspberry Pi
+
+Camera support (`picamera2`, `libcamera`) requires system packages that are
+not on PyPI. Install them first:
+
+```zsh
+sudo apt install python3-libcamera python3-picamera2
+```
+
+Then create the venv using the system Python (3.13 on Raspberry Pi OS Trixie)
+with `--system-site-packages` so the venv can see the camera libraries:
+
+```zsh
+uv venv ~/env --python 3.13 --system-site-packages
+echo 'source ~/env/bin/activate' >> ~/.zshrc
+source ~/env/bin/activate
+```
+
+User install (from PyPI):
+```zsh
+uv pip install donkeycar[pi]
+```
+
+Developer install (from a git clone):
+```zsh
+uv pip install -e ".[pi,dev]"
+```
+
+### Mac
+
+```zsh
+uv venv ~/.venvs/donkeycar --python 3.12
+echo 'source ~/.venvs/donkeycar/bin/activate' >> ~/.zshrc
+source ~/.venvs/donkeycar/bin/activate
+```
+
+User install (from PyPI):
+```zsh
+uv pip install donkeycar[macos]
+```
+
+Developer install (from a git clone):
+```zsh
+uv pip install -e ".[macos,dev]"
+```
+
+### PC (Linux/Windows)
+
+```zsh
+uv venv ~/.venvs/donkeycar --python 3.12
+echo 'source ~/.venvs/donkeycar/bin/activate' >> ~/.zshrc
+source ~/.venvs/donkeycar/bin/activate
+```
+
+User install (from PyPI):
+```zsh
+uv pip install donkeycar[pc]
+```
+
+Developer install (from a git clone):
+```zsh
+uv pip install -e ".[pc,dev]"
+```
+
+Once the venv is activated in your shell profile the `donkey` command is
+available from any directory without needing `uv run`.
 
 See [home page](http://donkeycar.com), [docs](http://docs.donkeycar.com)
 or join the [Discord server](http://www.donkeycar.com/community.html) to learn more.
